@@ -47,7 +47,7 @@ lazy val scalacheck = project.in(file("scalacheck"))
   .settings(
     // as per discussion at https://github.com/lampepfl/dotty/pull/10179 ,
     // the Dotty community build is on 1.14.1-SNAPSHOT for now
-    libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.14.1-SNAPSHOT" withDottyCompat(scalaVersion.value),
+    libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.14.1-SNAPSHOT",
     Test / fork := true,
     Test / testOptions += Tests.Argument(TestFrameworks.ScalaCheck, "-workers", "1", "-minSize", "0", "-maxSize", "4000", "-minSuccessfulTests", "5"),
     publish / skip := true
