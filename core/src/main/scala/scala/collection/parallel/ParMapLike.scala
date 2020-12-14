@@ -15,9 +15,9 @@ package collection.parallel
 
 import scala.collection.generic.GenericParMapCompanion
 import scala.collection.{IterableOnce, MapOps}
-import scala.collection.Map
 
 import scala.annotation.unchecked.uncheckedVariance
+import scala.collection.Map
 
 /** A template trait for mutable parallel maps. This trait is to be mixed in
  *  with concrete parallel maps to override the representation type.
@@ -168,7 +168,7 @@ self =>
     def splitter = filtered.splitter
     override def contains(key: K) = self.contains(key) && p(key)
     def get(key: K) = if (!p(key)) None else self.get(key)
-    def seq = self.seq.view.filterKeys(p).to(Map)
+    def seq = self.seq.view.filterKeys(p).to(scala.collection.Map)
     def size = filtered.size
     override def knownSize = filtered.knownSize
     def + [U >: V](kv: (K, U)): ParMap[K, U] = ParMap[K, U]() ++ this + kv
@@ -182,7 +182,7 @@ self =>
     override def knownSize = self.knownSize
     override def contains(key: K) = self.contains(key)
     def get(key: K) = self.get(key).map(f)
-    def seq = self.seq.view.mapValues(f).to(Map)
+    def seq = self.seq.view.mapValues(f).to(scala.collection.Map)
     def + [U >: S](kv: (K, U)): ParMap[K, U] = ParMap[K, U]() ++ this + kv
     def - (key: K): ParMap[K, S] = ParMap[K, S]() ++ this - key
   }
