@@ -3,9 +3,9 @@ publish / skip := true // in root
 
 lazy val commonSettings: Seq[Setting[_]] =
   ScalaModulePlugin.scalaModuleSettings ++ Seq(
-    Compile / compile / scalacOptions --= (if (isDotty.value) Seq("-Xlint")
+    Compile / compile / scalacOptions --= (if (scalaVersion.value.startsWith("3")) Seq("-Xlint")
                                            else Seq()),
-    Compile / compile / scalacOptions ++= (if (isDotty.value) Seq()
+    Compile / compile / scalacOptions ++= (if (scalaVersion.value.startsWith("3")) Seq()
                                            else Seq("-Werror")),
   )
 
@@ -15,8 +15,8 @@ lazy val core = project.in(file("core"))
     name := "scala-parallel-collections",
     // don't run Dottydoc, it errors and isn't needed anyway.
     // but we leave `publishArtifact` set to true, otherwise Sonatype won't let us publish
-    Compile / doc / sources := (if (isDotty.value) Seq() else (Compile / doc/ sources).value),
-    scalaModuleMimaPreviousVersion := Some("1.0.0").filterNot(_ => isDotty.value),
+    Compile / doc / sources := (if (scalaVersion.value.startsWith("3")) Seq() else (Compile / doc/ sources).value),
+    scalaModuleMimaPreviousVersion := Some("1.0.0").filterNot(_ => scalaVersion.value.startsWith("3")),
   )
 
 lazy val junit = project.in(file("junit"))
@@ -44,7 +44,7 @@ lazy val testmacros = project.in(file("testmacros"))
   .settings(commonSettings)
   .settings(
     libraryDependencies += (
-      if (isDotty.value)
+      if (scalaVersion.value.startsWith("3"))
         scalaOrganization.value %% "scala3-compiler" % scalaVersion.value
       else
         scalaOrganization.value % "scala-compiler" % scalaVersion.value
