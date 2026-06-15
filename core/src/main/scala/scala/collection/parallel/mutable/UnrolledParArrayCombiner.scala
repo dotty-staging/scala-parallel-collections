@@ -46,7 +46,7 @@ extends Combiner[T, ParArray[T]] {
 
   override def sizeHint(sz: Int) = {
     buff.lastPtr.next = new Unrolled(0, new Array[Any](sz), null, buff)
-    buff.lastPtr = buff.lastPtr.next
+    buff.lastPtr = buff.lastPtr.next.nn
   }
 
   def combine[N <: T, NewTo >: ParArray[T]](other: Combiner[N, NewTo]): Combiner[N, NewTo] = other match {
@@ -72,21 +72,21 @@ extends Combiner[T, ParArray[T]] {
       var pos = startpos
       var arroffset = offset
       while (totalleft > 0) {
-        val lefthere = scala.math.min(totalleft, curr.size - pos)
-        Array.copy(curr.array, pos, array, arroffset, lefthere)
+        val lefthere = scala.math.min(totalleft, curr.nn.size - pos)
+        Array.copy(curr.nn.array, pos, array, arroffset, lefthere)
         // println("from: " + arroffset + " elems " + lefthere + " - " + pos + ", " + curr + " -> " + array.toList + " by " + this + " !! " + buff.headPtr)
         totalleft -= lefthere
         arroffset += lefthere
         pos = 0
-        curr = curr.next
+        curr = curr.nn.next
       }
     }
     private def findStart(pos: Int) = {
       var left = pos
-      var node = buff.headPtr
-      while ((left - node.size) >= 0) {
-        left -= node.size
-        node = node.next
+      var node: Unrolled[Any] | Null = buff.headPtr
+      while ((left - node.nn.size) >= 0) {
+        left -= node.nn.size
+        node = node.nn.next
       }
       (node, left)
     }

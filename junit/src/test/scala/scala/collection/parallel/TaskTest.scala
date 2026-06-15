@@ -31,7 +31,7 @@ class TaskTest {
     }
     def mkPool(name: String) = {
       val parallelism = 1
-      val handler: Thread.UncaughtExceptionHandler = null
+      val handler: Thread.UncaughtExceptionHandler | Null = null
       val asyncMode = false
       new ForkJoinPool(parallelism, mkFactory(name), handler, asyncMode)
     }

@@ -189,11 +189,11 @@ extends scala.collection.parallel.BucketCombiner[T, ParHashSet[T], Any, HashSetC
     private def createTrie(elems: Unrolled[Any]): OldHashSet[T] = {
       var trie = OldHashSet.empty[T]
 
-      var unrolled = elems
+      var unrolled: Unrolled[Any] | Null = elems
       var i = 0
       while (unrolled ne null) {
-        val chunkarr = unrolled.array
-        val chunksz = unrolled.size
+        val chunkarr = unrolled.nn.array
+        val chunksz = unrolled.nn.size
         while (i < chunksz) {
           val v = chunkarr(i).asInstanceOf[T]
           val hc = Hashing.computeHash(v)
@@ -201,7 +201,7 @@ extends scala.collection.parallel.BucketCombiner[T, ParHashSet[T], Any, HashSetC
           i += 1
         }
         i = 0
-        unrolled = unrolled.next
+        unrolled = unrolled.nn.next
       }
 
       trie

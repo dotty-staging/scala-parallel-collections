@@ -36,7 +36,7 @@ import scala.collection.parallel.Task
  *  section on Parallel Hash Tables for more information.
  */
 @SerialVersionUID(3L)
-class ParHashMap[K, V] private[collection] (contents: ParHashTable.Contents[K, DefaultEntry[K, V]])
+class ParHashMap[K, V] private[collection] (contents: ParHashTable.Contents[K, DefaultEntry[K, V]] | Null)
 extends ParMap[K, V]
    with GenericParMapTemplate[K, V, ParHashMap]
    with ParMapLike[K, V, ParHashMap, ParHashMap[K, V], scala.collection.mutable.HashMap[K, V]]
@@ -95,11 +95,11 @@ self =>
 
   override def stringPrefix = "ParHashMap"
 
-  class ParHashMapIterator(start: Int, untilIdx: Int, totalSize: Int, e: DefaultEntry[K, V])
+  class ParHashMapIterator(start: Int, untilIdx: Int, totalSize: Int, e: DefaultEntry[K, V] | Null)
   extends EntryIterator[(K, V), ParHashMapIterator](start, untilIdx, totalSize, e) {
     def entry2item(entry: DefaultEntry[K, V]) = (entry.key, entry.value)
 
-    def newIterator(idxFrom: Int, idxUntil: Int, totalSz: Int, es: DefaultEntry[K, V]) =
+    def newIterator(idxFrom: Int, idxUntil: Int, totalSz: Int, es: DefaultEntry[K, V] | Null) =
       new ParHashMapIterator(idxFrom, idxUntil, totalSz, es)
   }
 
@@ -129,8 +129,8 @@ self =>
   }
 
   private def checkBucket(i: Int) = {
-    def count(e: HashEntry[K, DefaultEntry[K, V]]): Int = if (e eq null) 0 else 1 + count(e.next)
-    val expected = sizemap(i)
+    def count(e: HashEntry[K, DefaultEntry[K, V]] | Null): Int = if (e eq null) 0 else 1 + count(e.next)
+    val expected = sizemap.nn(i)
     val found = ((i * sizeMapBucketSize) until ((i + 1) * sizeMapBucketSize)).foldLeft(0) {
       (acc, c) => acc + count(table(c))
     }
@@ -139,7 +139,7 @@ self =>
   }
 
   private def checkEntry(i: Int) = {
-    def check(e: HashEntry[K, DefaultEntry[K, V]]): List[String] = if (e eq null) Nil else
+    def check(e: HashEntry[K, DefaultEntry[K, V]] | Null): List[String] = if (e eq null) Nil else
       if (index(elemHashCode(e.key)) == i) check(e.next)
       else ("Element " + e.key + " at " + i + " with " + elemHashCode(e.key) + " maps to " + index(elemHashCode(e.key))) :: check(e.next)
     check(table(i))
@@ -227,7 +227,7 @@ extends scala.collection.parallel.BucketCombiner[(K, V), ParHashMap[K, V], Defau
 
     import HashTable._
     _loadFactor = lf
-    table = new Array[HashEntry[K, DefaultEntry[K, V]]](capacity(sizeForThreshold(_loadFactor, numelems)))
+    table = new Array[HashEntry[K, DefaultEntry[K, V]] | Null](capacity(sizeForThreshold(_loadFactor, numelems)))
     tableSize = 0
     this.seedvalue = _seedvalue
     threshold = newThreshold(_loadFactor, table.length)
@@ -238,12 +238,12 @@ extends scala.collection.parallel.BucketCombiner[(K, V), ParHashMap[K, V], Defau
       val olde = table(h).asInstanceOf[DefaultEntry[K, V]]
 
       // check if key already exists
-      var ce = olde
+      var ce: DefaultEntry[K, V] | Null = olde
       while (ce ne null) {
-        if (ce.key == e.key) {
+        if (ce.nn.key == e.key) {
           h = -1
           ce = null
-        } else ce = ce.next
+        } else ce = ce.nn.next
       }
 
       // if key does not already exist
@@ -261,7 +261,7 @@ extends scala.collection.parallel.BucketCombiner[(K, V), ParHashMap[K, V], Defau
 
   import UnrolledBuffer.Unrolled
 
-  class FillBlocks(buckets: Array[Unrolled[DefaultEntry[K, V]]], table: AddingHashTable, offset: Int, howmany: Int)
+  class FillBlocks(buckets: Array[Unrolled[DefaultEntry[K, V]] | Null], table: AddingHashTable, offset: Int, howmany: Int)
   extends Task[Int, FillBlocks] {
     var result = Int.MinValue
     def leaf(prev: Option[Int]) = {
@@ -273,21 +273,21 @@ extends scala.collection.parallel.BucketCombiner[(K, V), ParHashMap[K, V], Defau
         i += 1
       }
     }
-    private def fillBlock(block: Int, elems: Unrolled[DefaultEntry[K, V]]) = {
+    private def fillBlock(block: Int, elems: Unrolled[DefaultEntry[K, V]] | Null) = {
       var insertcount = 0
       var unrolled = elems
       var i = 0
       val t = table
       while (unrolled ne null) {
-        val chunkarr = unrolled.array
-        val chunksz = unrolled.size
+        val chunkarr = unrolled.nn.array
+        val chunksz = unrolled.nn.size
         while (i < chunksz) {
           val elem = chunkarr(i)
           if (t.insertEntry(elem)) insertcount += 1
           i += 1
         }
         i = 0
-        unrolled = unrolled.next
+        unrolled = unrolled.nn.next
       }
       insertcount
     }

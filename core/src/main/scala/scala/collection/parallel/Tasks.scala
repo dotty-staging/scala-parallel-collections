@@ -42,8 +42,8 @@ trait Task[R, +Tp] {
   private[parallel] def merge(that: Tp @uncheckedVariance): Unit = {}
 
   // exception handling mechanism
-  @volatile var throwable: Throwable = null
-  def forwardThrowable() = if (throwable != null) throw throwable
+  @volatile var throwable: Throwable | Null = null
+  def forwardThrowable() = if (throwable != null) throw throwable.nn
 
   // tries to do the leaf computation, storing the possible exception
   private[parallel] def tryLeaf(lastres: Option[R]): Unit = {
@@ -71,7 +71,7 @@ trait Task[R, +Tp] {
   private[parallel] def mergeThrowables(that: Task[?, ?]): Unit =
      if (this.throwable != null) {
        if (that.throwable != null && (this.throwable ne that.throwable))
-         this.throwable.addSuppressed(that.throwable)
+         this.throwable.nn.addSuppressed(that.throwable.nn)
      } else if (that.throwable != null)
        this.throwable = that.throwable
 
@@ -140,7 +140,7 @@ trait Tasks {
 trait AdaptiveWorkStealingTasks extends Tasks {
 
   trait AWSTWrappedTask[R, Tp] extends WrappedTask[R, Tp] {
-    @volatile var next: AWSTWrappedTask[R, Tp] = null
+    @volatile var next: AWSTWrappedTask[R, Tp] | Null = null
     @volatile var shouldWaitFor = true
 
     def split: Seq[AWSTWrappedTask[R, Tp]]
@@ -163,7 +163,7 @@ trait AdaptiveWorkStealingTasks extends Tasks {
 
       while (last.next != null) {
         // val lastresult = Option(last.body.result)
-        last = last.next
+        last = last.next.nn
         if (last.tryCancel()) {
           // println("Done with " + beforelast.body + ", next direct is " + last.body)
           last.body.tryLeaf(Some(body.result))
@@ -178,7 +178,7 @@ trait AdaptiveWorkStealingTasks extends Tasks {
     }
 
     def spawnSubtasks() = {
-      var last: AWSTWrappedTask[R, Tp] = null
+      var last: AWSTWrappedTask[R, Tp] | Null = null
       var head: AWSTWrappedTask[R, Tp] = this
       while ({
         val subtasks = head.split
@@ -195,7 +195,7 @@ trait AdaptiveWorkStealingTasks extends Tasks {
     }
 
     def printChain() = {
-      var curr = this
+      var curr: AWSTWrappedTask[R, Tp] | Null = this
       var chain = "chain: "
       while (curr != null) {
         chain += curr.toString + " ---> "

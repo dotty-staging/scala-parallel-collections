@@ -74,7 +74,7 @@ sealed abstract class OldHashMap[K, +V]
     */
   def merged[V1 >: V](that: OldHashMap[K, V1])(mergef: MergeFunction[K, V1]): OldHashMap[K, V1] = merge0(that, 0, liftMerger(mergef))
 
-  protected[collection] def updated0[V1 >: V](key: K, hash: Int, level: Int, value: V1, kv: (K, V1), merger: Merger[K, V1]): OldHashMap[K, V1]
+  protected[collection] def updated0[V1 >: V](key: K, hash: Int, level: Int, value: V1, kv: (K, V1) | Null, merger: Merger[K, V1] | Null): OldHashMap[K, V1]
 
   protected def removed0(key: K, hash: Int, level: Int): OldHashMap[K, V]
 
@@ -82,7 +82,8 @@ sealed abstract class OldHashMap[K, +V]
 
   protected def merge0[V1 >: V](that: OldHashMap[K, V1], level: Int, merger: Merger[K, V1]): OldHashMap[K, V1]
 
-  protected def filter0(p: ((K, V)) => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashMap[K, V @uV]], offset0: Int): OldHashMap[K, V]
+  // `filter0` returns `null` to signal an empty result (callers wrap it with `nullToEmpty`).
+  protected def filter0(p: ((K, V)) => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashMap[K, V @uV]], offset0: Int): OldHashMap[K, V] | Null
 
   protected def contains0(key: K, hash: Int, level: Int): Boolean
 
@@ -182,20 +183,20 @@ object OldHashMap extends MapFactory[OldHashMap] {
     * In many internal operations the empty map is represented as null for performance reasons. This method converts
     * null to the empty map for use in public methods
     */
-  @`inline` private def nullToEmpty[A, B](m: OldHashMap[A, B]): OldHashMap[A, B] = if (m eq null) empty[A, B] else m
+  @`inline` private def nullToEmpty[A, B](m: OldHashMap[A, B] | Null): OldHashMap[A, B] = if (m eq null) empty[A, B] else m
 
   private object EmptyOldHashMap extends OldHashMap[Any, Nothing] {
 
     override def isEmpty: Boolean = true
     override def knownSize: Int = 0
-    protected[collection] def updated0[V1 >: Nothing](key: Any, hash: Int, level: Int, value: V1, kv: (Any, V1), merger: Merger[Any, V1]): OldHashMap[Any, V1] =
+    protected[collection] def updated0[V1 >: Nothing](key: Any, hash: Int, level: Int, value: V1, kv: (Any, V1) | Null, merger: Merger[Any, V1] | Null): OldHashMap[Any, V1] =
       new OldHashMap.OldHashMap1(key, hash, value, kv)
 
     protected def removed0(key: Any, hash: Int, level: Int): OldHashMap[Any, Nothing] = this
 
     protected[collection] def get0(key: Any, hash: Int, level: Int): Option[Nothing] = None
 
-    protected def filter0(p: ((Any, Nothing)) => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashMap[Any, Nothing]], offset0: Int): OldHashMap[Any, Nothing] = null
+    protected def filter0(p: ((Any, Nothing)) => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashMap[Any, Nothing]], offset0: Int): OldHashMap[Any, Nothing] | Null = null
 
     protected def contains0(key: Any, hash: Int, level: Int): Boolean = false
 
@@ -217,7 +218,7 @@ object OldHashMap extends MapFactory[OldHashMap] {
 
   }
 
-  final class OldHashMap1[K, +V](private[collection] val key: K, private[collection] val hash: Int, private[collection] val value: V, private[collection] var kv: (K, V@uV)) extends OldHashMap[K, V] {
+  final class OldHashMap1[K, +V](private[collection] val key: K, private[collection] val hash: Int, private[collection] val value: V, private[collection] var kv: (K, V@uV) | Null) extends OldHashMap[K, V] {
     override def isEmpty: Boolean = false
     def iterator: Iterator[(K, V)] = Iterator.single(ensurePair)
 
@@ -233,7 +234,7 @@ object OldHashMap extends MapFactory[OldHashMap] {
     protected def contains0(key: K, hash: Int, level: Int): Boolean =
       hash == this.hash && key == this.key
 
-    protected[collection] def updated0[V1 >: V](key: K, hash: Int, level: Int, value: V1, kv: (K, V1), merger: Merger[K, V1]): OldHashMap[K, V1] =
+    protected[collection] def updated0[V1 >: V](key: K, hash: Int, level: Int, value: V1, kv: (K, V1) | Null, merger: Merger[K, V1] | Null): OldHashMap[K, V1] =
       if (hash == this.hash && key == this.key ) {
         if (merger eq null) {
           if (this.value.asInstanceOf[AnyRef] eq value.asInstanceOf[AnyRef]) this
@@ -256,13 +257,17 @@ object OldHashMap extends MapFactory[OldHashMap] {
     protected def removed0(key: K, hash: Int, level: Int): OldHashMap[K, V] =
       if (hash == this.hash && key == this.key) OldHashMap.empty[K,V] else this
 
-    protected def filter0(p: ((K, V)) => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashMap[K, V @uV]], offset0: Int): OldHashMap[K, V] =
+    protected def filter0(p: ((K, V)) => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashMap[K, V @uV]], offset0: Int): OldHashMap[K, V] | Null =
       if (negate ^ p(ensurePair)) this else null
 
     override def foreach[U](f: ((K, V)) => U): Unit = f(ensurePair)
 
     // this method may be called multiple times in a multithreaded environment, but that's ok
-    private[OldHashMap] def ensurePair: (K, V) = if (kv ne null) kv else { kv = (key, value); kv }
+    // (`kv` is a `var`, which flow typing won't narrow, so bind it to a local `val` first)
+    private[OldHashMap] def ensurePair: (K, V) = {
+      val k = kv
+      if (k ne null) k else { val p = (key, value); kv = p; p }
+    }
 
     protected def merge0[V1 >: V](that: OldHashMap[K, V1], level: Int, merger: Merger[K, V1]): OldHashMap[K, V1] =
       that.updated0(key, hash, level, value, kv, merger.invert)
@@ -281,10 +286,10 @@ object OldHashMap extends MapFactory[OldHashMap] {
     protected def contains0(key: K, hash: Int, level: Int): Boolean =
       hash == this.hash && kvs.contains(key)
 
-    protected[collection] override def updated0[B1 >: V](key: K, hash: Int, level: Int, value: B1, kv: (K, B1), merger: Merger[K, B1]): OldHashMap[K, B1] =
+    protected[collection] override def updated0[B1 >: V](key: K, hash: Int, level: Int, value: B1, kv: (K, B1) | Null, merger: Merger[K, B1] | Null): OldHashMap[K, B1] =
       if (hash == this.hash) {
         if ((merger eq null) || !kvs.contains(key)) new OldHashMapCollision1(hash, kvs.updated(key, value))
-        else new OldHashMapCollision1(hash, kvs + merger((key, kvs(key)), kv))
+        else new OldHashMapCollision1(hash, kvs + merger((key, kvs(key)), if (kv != null) kv else (key, value)))
       } else {
         val that = new OldHashMap1(key, hash, value, kv)
         makeHashTrieMap(this.hash, this, hash, that, level, size + 1)
@@ -306,7 +311,7 @@ object OldHashMap extends MapFactory[OldHashMap] {
         }
       } else this
 
-    override protected def filter0(p: ((K, V)) => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashMap[K, V @uV]], offset0: Int): OldHashMap[K, V] = {
+    override protected def filter0(p: ((K, V)) => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashMap[K, V @uV]], offset0: Int): OldHashMap[K, V] | Null = {
       val kvs1 = if (negate) kvs.filterNot(p) else kvs.filter(p)
       kvs1.size match {
         case 0 =>
@@ -384,7 +389,7 @@ object OldHashMap extends MapFactory[OldHashMap] {
       }
     }
 
-    protected[collection] def updated0[V1 >: V](key: K, hash: Int, level: Int, value: V1, kv: (K, V1), merger: Merger[K, V1]): OldHashMap[K, V1] = {
+    protected[collection] def updated0[V1 >: V](key: K, hash: Int, level: Int, value: V1, kv: (K, V1) | Null, merger: Merger[K, V1] | Null): OldHashMap[K, V1] = {
       val index = (hash >>> level) & 0x1f
       val mask = (1 << index)
       val offset = Integer.bitCount(bitmap & (mask - 1))
@@ -442,7 +447,7 @@ object OldHashMap extends MapFactory[OldHashMap] {
       }
     }
 
-    protected def filter0(p: ((K, V)) => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashMap[K, V @uV]], offset0: Int): OldHashMap[K, V] = {
+    protected def filter0(p: ((K, V)) => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashMap[K, V @uV]], offset0: Int): OldHashMap[K, V] | Null = {
       // current offset
       var offset = offset0
       // result size

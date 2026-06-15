@@ -49,7 +49,7 @@ private[collection] trait FlatHashTable[A] extends FlatHashTable.HashUtils[A] {
 
   /** The array keeping track of number of elements in 32 element blocks.
    */
-  protected var sizemap: Array[Int] = null
+  protected var sizemap: Array[Int] = null.asInstanceOf[Array[Int]]
 
   protected var seedvalue: Int = tableSizeSeed
 
@@ -88,7 +88,7 @@ private[collection] trait FlatHashTable[A] extends FlatHashTable.HashUtils[A] {
     seedvalue = in.readInt()
 
     val smDefined = in.readBoolean()
-    if (smDefined) sizeMapInit(table.length) else sizemap = null
+    if (smDefined) sizeMapInit(table.length) else sizemap = null.asInstanceOf[Array[Int]]
 
     var index = 0
     while (index < size) {
@@ -193,7 +193,7 @@ private[collection] trait FlatHashTable[A] extends FlatHashTable.HashUtils[A] {
           }
           h1 = (h1 + 1) % table.length
         }
-        table(h0) = null
+        table(h0) = null.asInstanceOf[AnyRef]
         tableSize -= 1
         nnSizeMapRemove(h0)
         if (tableDebug) checkConsistent()
@@ -309,7 +309,7 @@ private[collection] trait FlatHashTable[A] extends FlatHashTable.HashUtils[A] {
     println(table.mkString("[", ", ", "]"))
   }
 
-  protected def sizeMapDisable() = sizemap = null
+  protected def sizeMapDisable() = sizemap = null.asInstanceOf[Array[Int]]
 
   protected def isSizeMapDefined = sizemap ne null
 
@@ -340,7 +340,7 @@ private[collection] trait FlatHashTable[A] extends FlatHashTable.HashUtils[A] {
 
   def clearTable(): Unit = {
     var i = table.length - 1
-    while (i >= 0) { table(i) = null; i -= 1 }
+    while (i >= 0) { table(i) = null.asInstanceOf[AnyRef]; i -= 1 }
     tableSize = 0
     nnSizeMapReset(table.length)
   }
@@ -354,7 +354,7 @@ private[collection] trait FlatHashTable[A] extends FlatHashTable.HashUtils[A] {
     sizemap
   )
 
-  protected def initWithContents(c: FlatHashTable.Contents[A]) = {
+  protected def initWithContents(c: FlatHashTable.Contents[A] | Null) = {
     if (c != null) {
       _loadFactor = c.loadFactor
       table = c.table

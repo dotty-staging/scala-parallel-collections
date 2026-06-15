@@ -25,7 +25,7 @@ class ParHashSetTest {
     for (i <- 20 until 40) assertFalse(h1.contains(i))
     assertEquals((0 until 20).toList.sorted, h1.toList.sorted)
 
-    val h2 = new ParHashSet[String]
+    val h2 = new ParHashSet[String | Null]
     h2 += null
     for (i <- 0 until 20) h2 +=  "" + i
     assertTrue(h2 contains null)

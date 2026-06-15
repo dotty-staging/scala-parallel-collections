@@ -239,11 +239,11 @@ extends scala.collection.parallel.BucketCombiner[(K, V), ParHashMap[K, V], (K, V
     private def createTrie(elems: Unrolled[(K, V)]): OldHashMap[K, V] = {
       var trie = OldHashMap.empty[K, V]
 
-      var unrolled = elems
+      var unrolled: Unrolled[(K, V)] | Null = elems
       var i = 0
       while (unrolled ne null) {
-        val chunkarr = unrolled.array
-        val chunksz = unrolled.size
+        val chunkarr = unrolled.nn.array
+        val chunksz = unrolled.nn.size
         while (i < chunksz) {
           val kv = chunkarr(i)
           val hc = Hashing.computeHash(kv._1)
@@ -251,7 +251,7 @@ extends scala.collection.parallel.BucketCombiner[(K, V), ParHashMap[K, V], (K, V
           i += 1
         }
         i = 0
-        unrolled = unrolled.next
+        unrolled = unrolled.nn.next
       }
 
       trie
@@ -278,11 +278,11 @@ extends scala.collection.parallel.BucketCombiner[(K, V), ParHashMap[K, V], (K, V
     private def createGroupedTrie(elems: Unrolled[(K, V)]): OldHashMap[K, Repr] = {
       var trie = OldHashMap.empty[K, Combiner[V, Repr]]
 
-      var unrolled = elems
+      var unrolled: Unrolled[(K, V)] | Null = elems
       var i = 0
       while (unrolled ne null) {
-        val chunkarr = unrolled.array
-        val chunksz = unrolled.size
+        val chunkarr = unrolled.nn.array
+        val chunksz = unrolled.nn.size
         while (i < chunksz) {
           val kv = chunkarr(i)
           val hc = Hashing.computeHash(kv._1)
@@ -299,7 +299,7 @@ extends scala.collection.parallel.BucketCombiner[(K, V), ParHashMap[K, V], (K, V
           i += 1
         }
         i = 0
-        unrolled = unrolled.next
+        unrolled = unrolled.nn.next
       }
 
       evaluateCombiners(trie).asInstanceOf[OldHashMap[K, Repr]]

@@ -21,7 +21,7 @@ import scala.collection.parallel.IterableSplitter
  *  enriching the data structure by fulfilling certain requirements
  *  for their parallel construction and iteration.
  */
-trait ParHashTable[K, V, Entry >: Null <: HashEntry[K, Entry]] extends scala.collection.mutable.HashTable[K, V, Entry]
+trait ParHashTable[K, V, Entry <: HashEntry[K, Entry]] extends scala.collection.mutable.HashTable[K, V, Entry]
   with WithContents[K, V, Entry] {
 
   override def alwaysInitSizeMap = true
@@ -29,22 +29,22 @@ trait ParHashTable[K, V, Entry >: Null <: HashEntry[K, Entry]] extends scala.col
   /** A parallel iterator returning all the entries.
    */
   abstract class EntryIterator[T, +IterRepr <: IterableSplitter[T]]
-  (private var idx: Int, private val until: Int, private val totalsize: Int, private var es: Entry)
+  (private var idx: Int, private val until: Int, private val totalsize: Int, private var es: Entry | Null)
   extends IterableSplitter[T] with SizeMapUtils {
     private val itertable = table
     private var traversed = 0
     scan()
 
     def entry2item(e: Entry): T
-    def newIterator(idxFrom: Int, idxUntil: Int, totalSize: Int, es: Entry): IterRepr
+    def newIterator(idxFrom: Int, idxUntil: Int, totalSize: Int, es: Entry | Null): IterRepr
 
     def hasNext = {
       es ne null
     }
 
     def next(): T = {
-      val res = es
-      es = es.next
+      val res = es.nn
+      es = res.next
       scan()
       traversed += 1
       entry2item(res)
@@ -109,12 +109,12 @@ trait ParHashTable[K, V, Entry >: Null <: HashEntry[K, Entry]] extends scala.col
       }
     } else scala.Seq(this.asInstanceOf[IterRepr])
 
-    private def convertToArrayBuffer(chainhead: Entry): mutable.ArrayBuffer[T] = {
+    private def convertToArrayBuffer(chainhead: Entry | Null): mutable.ArrayBuffer[T] = {
       val buff = mutable.ArrayBuffer[Entry]()
       var curr = chainhead
       while (curr ne null) {
-        buff += curr
-        curr = curr.next
+        buff += curr.nn
+        curr = curr.nn.next
       }
       // println("converted " + remaining + " element iterator into buffer: " + buff)
       buff map { e => entry2item(e) }
@@ -123,12 +123,12 @@ trait ParHashTable[K, V, Entry >: Null <: HashEntry[K, Entry]] extends scala.col
     protected def countElems(from: Int, until: Int) = {
       var c = 0
       var idx = from
-      var es: Entry = null
+      var es: Entry | Null = null
       while (idx < until) {
-        es = itertable(idx).asInstanceOf[Entry]
+        es = itertable(idx).asInstanceOf[Entry | Null]
         while (es ne null) {
           c += 1
-          es = es.next
+          es = es.nn.next
         }
         idx += 1
       }
@@ -139,7 +139,7 @@ trait ParHashTable[K, V, Entry >: Null <: HashEntry[K, Entry]] extends scala.col
       var c = 0
       var idx = fromBucket
       while (idx < untilBucket) {
-        c += sizemap(idx)
+        c += sizemap.nn(idx)
         idx += 1
       }
       c
@@ -148,9 +148,9 @@ trait ParHashTable[K, V, Entry >: Null <: HashEntry[K, Entry]] extends scala.col
 
 }
 
-trait WithContents[K, V, Entry >: Null <: HashEntry[K, Entry]] { this: scala.collection.mutable.HashTable[K, V, Entry] =>
+trait WithContents[K, V, Entry <: HashEntry[K, Entry]] { this: scala.collection.mutable.HashTable[K, V, Entry] =>
 
-  protected def initWithContents(c: ParHashTable.Contents[K, Entry]) = {
+  protected def initWithContents(c: ParHashTable.Contents[K, Entry] | Null) = {
     if (c != null) {
       _loadFactor = c.loadFactor
       table = c.table
@@ -173,13 +173,13 @@ trait WithContents[K, V, Entry >: Null <: HashEntry[K, Entry]] { this: scala.col
 }
 
 private[collection] object ParHashTable {
-  class Contents[A, Entry >: Null <: HashEntry[A, Entry]](
+  class Contents[A, Entry <: HashEntry[A, Entry]](
     val loadFactor: Int,
-    val table: Array[HashEntry[A, Entry]],
+    val table: Array[HashEntry[A, Entry] | Null],
     val tableSize: Int,
     val threshold: Int,
     val seedvalue: Int,
-    val sizemap: Array[Int]
+    val sizemap: Array[Int] | Null
   ) {
     import scala.collection.DebugUtils._
     private[collection] def debugInformation = buildString {
@@ -191,7 +191,7 @@ private[collection] object ParHashTable {
         append("Load factor: " + loadFactor)
         append("Seedvalue: " + seedvalue)
         append("Threshold: " + threshold)
-        append("Sizemap: [" + arrayString(sizemap, 0, sizemap.length) + "]")
+        append("Sizemap: [" + arrayString(sizemap.nn, 0, sizemap.nn.length) + "]")
     }
   }
 }

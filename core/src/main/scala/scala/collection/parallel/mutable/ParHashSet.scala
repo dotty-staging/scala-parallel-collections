@@ -37,7 +37,7 @@ import scala.collection.parallel.Task
  *  section on Parallel Hash Tables for more information.
  */
 @SerialVersionUID(1L)
-class ParHashSet[T] private[collection] (contents: FlatHashTable.Contents[T])
+class ParHashSet[T] private[collection] (contents: FlatHashTable.Contents[T] | Null)
 extends ParSet[T]
    with GenericParTemplate[T, ParHashSet]
    with ParSetLike[T, ParHashSet, ParHashSet[T], scala.collection.mutable.HashSet[T]]
@@ -273,12 +273,12 @@ with scala.collection.mutable.FlatHashTable.HashUtils[T] {
       val leftovers = new UnrolledBuffer[AnyRef]
       var inserted = 0
 
-      var unrolled = elems.headPtr
+      var unrolled: UnrolledBuffer.Unrolled[AnyRef] | Null = elems.headPtr
       var i = 0
       val t = table
       while (unrolled ne null) {
-        val chunkarr = unrolled.array
-        val chunksz = unrolled.size
+        val chunkarr = unrolled.nn.array
+        val chunksz = unrolled.nn.size
         while (i < chunksz) {
           val entry = chunkarr(i)
           val res = t.insertEntry(atPos, beforePos, entry)
@@ -287,7 +287,7 @@ with scala.collection.mutable.FlatHashTable.HashUtils[T] {
           i += 1
         }
         i = 0
-        unrolled = unrolled.next
+        unrolled = unrolled.nn.next
       }
 
       // slower:

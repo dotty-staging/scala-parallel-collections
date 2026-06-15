@@ -100,9 +100,12 @@ sealed abstract class OldHashSet[A]
 
   protected[collection] def updated0(key: A, hash: Int, level: Int): OldHashSet[A]
 
-  protected def removed0(key: A, hash: Int, level: Int): OldHashSet[A]
+  // `removed0` also returns `null` to signal "became empty" (callers null-check / wrap with `nullToEmpty`).
+  protected def removed0(key: A, hash: Int, level: Int): OldHashSet[A] | Null
 
-  protected def filter0(p: A => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashSet[A]], offset0: Int): OldHashSet[A]
+  // `filter0`/`intersect0`/`diff0` return `null` to signal an empty result
+  // (callers null-check and wrap with `nullToEmpty`).
+  protected def filter0(p: A => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashSet[A]], offset0: Int): OldHashSet[A] | Null
 
   /**
     * A specialized implementation of subsetOf for when both this and that are OldHashSet[A] and we can take advantage
@@ -144,7 +147,7 @@ sealed abstract class OldHashSet[A]
     * @return The intersection of this and that at the given level. Unless level is zero, the result is not a
     *         self-contained OldHashSet but needs to be stored at the correct depth
     */
-  protected def intersect0(that: OldHashSet[A], level: Int, buffer: Array[OldHashSet[A]], offset0: Int): OldHashSet[A]
+  protected def intersect0(that: OldHashSet[A], level: Int, buffer: Array[OldHashSet[A]], offset0: Int): OldHashSet[A] | Null
 
   /**
     * Diff with another hash set at a given level
@@ -154,7 +157,7 @@ sealed abstract class OldHashSet[A]
     * @return The diff of this and that at the given level. Unless level is zero, the result is not a
     *         self-contained OldHashSet but needs to be stored at the correct depth
     */
-  protected def diff0(that: OldHashSet[A], level: Int, buffer: Array[OldHashSet[A]], offset0: Int): OldHashSet[A]
+  protected def diff0(that: OldHashSet[A], level: Int, buffer: Array[OldHashSet[A]], offset0: Int): OldHashSet[A] | Null
 
 }
 
@@ -211,11 +214,11 @@ object OldHashSet extends IterableFactory[OldHashSet] {
 
     protected def union0(that: OldHashSet[Any], level: Int, buffer: Array[OldHashSet[Any]], offset0: Int): OldHashSet[Any] = that
 
-    protected def intersect0(that: OldHashSet[Any], level: Int, buffer: Array[OldHashSet[Any]], offset0: Int): OldHashSet[Any] = null
+    protected def intersect0(that: OldHashSet[Any], level: Int, buffer: Array[OldHashSet[Any]], offset0: Int): OldHashSet[Any] | Null = null
 
-    protected def diff0(that: OldHashSet[Any], level: Int, buffer: Array[OldHashSet[Any]], offset0: Int): OldHashSet[Any] = null
+    protected def diff0(that: OldHashSet[Any], level: Int, buffer: Array[OldHashSet[Any]], offset0: Int): OldHashSet[Any] | Null = null
 
-    protected def filter0(p: Any => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashSet[Any]], offset0: Int): OldHashSet[Any] = null
+    protected def filter0(p: Any => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashSet[Any]], offset0: Int): OldHashSet[Any] | Null = null
 
   }
 
@@ -304,7 +307,7 @@ object OldHashSet extends IterableFactory[OldHashSet] {
     protected def diff0(that: OldHashSet[A], level: Int, buffer: Array[OldHashSet[A]], offset0: Int) =
       if (that.get0(key, hash, level)) null else this
 
-    protected def filter0(p: A => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashSet[A]], offset0: Int): OldHashSet[A] =
+    protected def filter0(p: A => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashSet[A]], offset0: Int): OldHashSet[A] | Null =
       if (negate ^ p(key)) this else null
   }
 
@@ -323,7 +326,7 @@ object OldHashSet extends IterableFactory[OldHashSet] {
       if (hash == this.hash) new OldHashSetCollision1(hash, ks + key)
       else makeHashTrieSet(this.hash, this, hash, new OldHashSet1(key, hash), level)
 
-    protected def removed0(key: A, hash: Int, level: Int): OldHashSet[A] =
+    protected def removed0(key: A, hash: Int, level: Int): OldHashSet[A] | Null =
       if (hash == this.hash) {
         val ks1 = ks - key
         ks1.size match {
@@ -357,7 +360,7 @@ object OldHashSet extends IterableFactory[OldHashSet] {
       //hash = computeHash(kvs.)
     }
 
-    protected def filter0(p: A => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashSet[A]], offset0: Int): OldHashSet[A] = {
+    protected def filter0(p: A => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashSet[A]], offset0: Int): OldHashSet[A] | Null = {
       val ks1 = if(negate) ks.filterNot(p) else ks.filter(p)
       ks1.size match {
         case 0 =>
@@ -563,7 +566,7 @@ object OldHashSet extends IterableFactory[OldHashSet] {
       }
     }
 
-    protected def removed0(key: A, hash: Int, level: Int): OldHashSet[A] = {
+    protected def removed0(key: A, hash: Int, level: Int): OldHashSet[A] | Null = {
       val index = (hash >>> level) & 0x1f
       val mask = (1 << index)
       val offset = Integer.bitCount(bitmap & (mask-1))
@@ -703,7 +706,7 @@ object OldHashSet extends IterableFactory[OldHashSet] {
       case _ => this
     }
 
-    protected def intersect0(that: OldHashSet[A], level: Int, buffer: Array[OldHashSet[A]], offset0: Int): OldHashSet[A] = that match {
+    protected def intersect0(that: OldHashSet[A], level: Int, buffer: Array[OldHashSet[A]], offset0: Int): OldHashSet[A] | Null = that match {
       case that if that eq this =>
         // shortcut for when that is this
         // this happens often for nodes deeper in the tree, especially when that and this share a common "heritage"
@@ -793,7 +796,7 @@ object OldHashSet extends IterableFactory[OldHashSet] {
       case _ => null
     }
 
-    protected def diff0(that: OldHashSet[A], level: Int, buffer: Array[OldHashSet[A]], offset0: Int): OldHashSet[A] = that match {
+    protected def diff0(that: OldHashSet[A], level: Int, buffer: Array[OldHashSet[A]], offset0: Int): OldHashSet[A] | Null = that match {
       case that if that eq this =>
         // shortcut for when that is this
         // this happens often for nodes deeper in the tree, especially when that and this share a common "heritage"
@@ -870,7 +873,7 @@ object OldHashSet extends IterableFactory[OldHashSet] {
       case that: OldHashSetCollision1[A] =>
         // we remove the elements using removed0 so we can use the fact that we know the hash of all elements
         // to be removed
-        @tailrec def removeAll(s:OldHashSet[A], r:ListSet[A]) : OldHashSet[A] =
+        @tailrec def removeAll(s:OldHashSet[A] | Null, r:ListSet[A]) : OldHashSet[A] | Null =
           if(r.isEmpty || (s eq null)) s
           else removeAll(s.removed0(r.head, that.hash, level), r.tail)
         removeAll(this, that.ks)
@@ -920,7 +923,7 @@ object OldHashSet extends IterableFactory[OldHashSet] {
         false
     }
 
-    protected def filter0(p: A => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashSet[A]], offset0: Int): OldHashSet[A] = {
+    protected def filter0(p: A => Boolean, negate: Boolean, level: Int, buffer: Array[OldHashSet[A]], offset0: Int): OldHashSet[A] | Null = {
       // current offset
       var offset = offset0
       // result size
@@ -1002,7 +1005,7 @@ object OldHashSet extends IterableFactory[OldHashSet] {
     * In many internal operations the empty set is represented as null for performance reasons. This method converts
     * null to the empty set for use in public methods
     */
-  @`inline` private def nullToEmpty[A](s: OldHashSet[A]): OldHashSet[A] = if (s eq null) empty[A] else s
+  @`inline` private def nullToEmpty[A](s: OldHashSet[A] | Null): OldHashSet[A] = if (s eq null) empty[A] else s
 
   // scalac generates a `readReplace` method to discard the deserialized state (see https://github.com/scala/bug/issues/10412).
   // This prevents it from serializing it in the first place:

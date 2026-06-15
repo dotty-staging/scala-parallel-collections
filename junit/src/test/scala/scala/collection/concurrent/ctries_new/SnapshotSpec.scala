@@ -63,7 +63,7 @@ class SnapshotSpec extends Spec {
     }
 
     def consistentReadOnly(name: String, readonly: Map[Wrap, Int], sz: Int, N: Int): Unit = {
-      @volatile var e: Exception = null
+      @volatile var e: Exception | Null = null
 
       // reads possible entries once and stores them
       // then reads all these N more times to check if the
@@ -100,8 +100,8 @@ class SnapshotSpec extends Spec {
       reader.join()
 
       if (e ne null) {
-        e.printStackTrace()
-        throw e
+        e.nn.printStackTrace()
+        throw e.nn
       }
     }
 
@@ -176,7 +176,7 @@ class SnapshotSpec extends Spec {
     }
 
     def consistentNonReadOnly(name: String, trie: TrieMap[Wrap, Int], sz: Int, N: Int): Unit = {
-      @volatile var e: Exception = null
+      @volatile var e: Exception | Null = null
 
       // reads possible entries once and stores them
       // then reads all these N more times to check if the
@@ -222,8 +222,8 @@ class SnapshotSpec extends Spec {
       worker.join()
 
       if (e ne null) {
-        e.printStackTrace()
-        throw e
+        e.nn.printStackTrace()
+        throw e.nn
       }
     }
 

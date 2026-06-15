@@ -477,7 +477,7 @@ extends ParIterableLike[T, CC, Repr, Sequential]
 
   protected[this] class SegmentLength(pred: T => Boolean, from: Int, protected[this] val pit: SeqSplitter[T @uncheckedVariance])
   extends ParSeqLikeAccessor[(Int, Boolean), SegmentLength] {
-    @volatile var result: (Int, Boolean) = null
+    @volatile var result: (Int, Boolean) = scala.compiletime.uninitialized
     def leaf(prev: Option[(Int, Boolean)]) = if (from < pit.indexFlag) {
       val itsize = pit.remaining
       val seglen = pit.prefixLength(pred)
@@ -537,7 +537,7 @@ extends ParIterableLike[T, CC, Repr, Sequential]
 
   protected[this] class Reverse[U >: T, This >: Repr](cbf: () => Combiner[U, This], protected[this] val pit: SeqSplitter[T @uncheckedVariance])
   extends ParSeqLikeTransformer[Combiner[U, This], Reverse[U, This]] {
-    @volatile var result: Combiner[U, This] = null
+    @volatile var result: Combiner[U, This] = scala.compiletime.uninitialized
     def leaf(prev: Option[Combiner[U, This]]) = result = pit.reverse2combiner(reuse(prev, cbf()))
     protected[this] def newSubtask(p: SuperParIterator) = new Reverse(cbf, down(p))
     override def merge(that: Reverse[U, This]) = result = that.result combine result
@@ -545,7 +545,7 @@ extends ParIterableLike[T, CC, Repr, Sequential]
 
   protected[this] class ReverseMap[S, That](f: T => S, pbf: () => Combiner[S, That], protected[this] val pit: SeqSplitter[T @uncheckedVariance])
   extends ParSeqLikeTransformer[Combiner[S, That], ReverseMap[S, That]] {
-    @volatile var result: Combiner[S, That] = null
+    @volatile var result: Combiner[S, That] = scala.compiletime.uninitialized
     def leaf(prev: Option[Combiner[S, That]]) = result = pit.reverseMap2combiner(f, pbf())
     protected[this] def newSubtask(p: SuperParIterator) = new ReverseMap(f, pbf, down(p))
     override def merge(that: ReverseMap[S, That]) = result = that.result combine result
@@ -570,7 +570,7 @@ extends ParIterableLike[T, CC, Repr, Sequential]
 
   protected[this] class Updated[U >: T, That](pos: Int, elem: U, pbf: CombinerFactory[U, That], protected[this] val pit: SeqSplitter[T @uncheckedVariance])
   extends ParSeqLikeTransformer[Combiner[U, That], Updated[U, That]] {
-    @volatile var result: Combiner[U, That] = null
+    @volatile var result: Combiner[U, That] = scala.compiletime.uninitialized
     def leaf(prev: Option[Combiner[U, That]]) = result = pit.updated2combiner(pos, elem, pbf())
     protected[this] def newSubtask(p: SuperParIterator) = throw new UnsupportedOperationException
     override def split = {
@@ -583,7 +583,7 @@ extends ParIterableLike[T, CC, Repr, Sequential]
 
   protected[this] class ParSeqLikeZip[U >: T, S, That](len: Int, cf: CombinerFactory[(U, S), That], protected[this] val pit: SeqSplitter[T @uncheckedVariance], val otherpit: SeqSplitter[S])
   extends ParSeqLikeTransformer[Combiner[(U, S), That], ParSeqLikeZip[U, S, That]] {
-    @volatile var result: Result = null
+    @volatile var result: Result = scala.compiletime.uninitialized
     def leaf(prev: Option[Result]) = result = pit.zip2combiner[U, S, That](otherpit, cf())
     protected[this] def newSubtask(p: SuperParIterator) = throw new UnsupportedOperationException
     override def split = {
